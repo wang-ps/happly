@@ -1460,6 +1460,59 @@ public:
     return result;
   }
 
+
+  /**
+   * @brief Common-case helper get mesh vertex positions
+   *
+   * @param vertexElementName The element name to use (default: "vertex")
+   *
+   * @return A vector of positions.
+   */
+  std::vector<float> getVertices(const std::string& vertexName = "vertex") {
+
+    std::vector<float> xPos = getElement(vertexName).getProperty<float>("x");
+    std::vector<float> yPos = getElement(vertexName).getProperty<float>("y");
+    std::vector<float> zPos = getElement(vertexName).getProperty<float>("z");
+
+    size_t npt = xPos.size();
+    std::vector<float> result(npt * 3);
+    for (size_t i = 0; i < npt; i++) {
+      size_t ix3 = i * 3;
+      result[ix3 + 0] = xPos[i];
+      result[ix3 + 1] = yPos[i];
+      result[ix3 + 2] = zPos[i];
+    }
+
+    return result;
+  }
+
+
+  /**
+   * @brief Common-case helper get mesh vertex positions
+   *
+   * @param vertexElementName The element name to use (default: "vertex")
+   *
+   * @return A vector of normals.
+   */
+  std::vector<float> getNormals(const std::string& vertexName = "vertex") {
+
+    std::vector<float> nx = getElement(vertexName).getProperty<float>("nx");
+    std::vector<float> ny = getElement(vertexName).getProperty<float>("ny");
+    std::vector<float> nz = getElement(vertexName).getProperty<float>("nz");
+
+    size_t npt = nx.size();
+    std::vector<float> result(npt * 3);
+    for (size_t i = 0; i < npt; i++) {
+      size_t ix3 = i * 3;
+      result[ix3 + 0] = nx[i];
+      result[ix3 + 1] = ny[i];
+      result[ix3 + 2] = nz[i];
+    }
+
+    return result;
+  }
+
+
   /**
    * @brief Common-case helper get mesh vertex colors
    *
@@ -1482,6 +1535,29 @@ public:
 
     return result;
   }
+
+  /**
+   * @brief Common-case helper to get face indices for a triangle mesh.
+   *
+   * @return The indices into the vertex elements for each face.
+   *         Usually 0-based, though there are no formal rules.
+   */
+  std::vector<int> getTriFaces() {
+
+    std::vector<std::vector<int>> fid = getFaceIndices<int>();
+
+    int nf = fid.size();
+    std::vector<int> result(nf * 3);
+    for (int i = 0; i < nf; ++i) {
+      int ix3 = i * 3;
+      for (int j = 0; j < 3; ++j) {
+        result[ix3 + j] = fid[i][j];
+      }
+    }
+
+    return result;
+  }
+
 
   /**
    * @brief Common-case helper to get face indices for a mesh. If not template type is given, size_t is used. Naively
@@ -1536,6 +1612,71 @@ public:
     getElement(vertexName).addProperty<double>("y", yPos);
     getElement(vertexName).addProperty<double>("z", zPos);
   }
+
+
+  /**
+   * @brief Common-case helper set mesh vertex positons.
+   *        Creates vertex element, if necessary.
+   *
+   * @param vertexPositions A vector of vertex positions
+   */
+  void addVertices(const std::vector<float>& V) {
+
+    std::string vertexName = "vertex";
+    size_t npt = V.size() / 3;
+
+    // Create the element
+    if (!hasElement(vertexName)) {
+      addElement(vertexName, npt);
+    }
+
+    // De-interleave
+    std::vector<float> xPos(npt), yPos(npt), zPos(npt);
+    for (size_t i = 0; i < npt; i++) {
+      int ix3 = i * 3;
+      xPos[i] = V[ix3 + 0];
+      yPos[i] = V[ix3 + 1];
+      zPos[i] = V[ix3 + 2];
+    }
+
+    // Store
+    getElement(vertexName).addProperty<float>("x", xPos);
+    getElement(vertexName).addProperty<float>("y", yPos);
+    getElement(vertexName).addProperty<float>("z", zPos);
+  }
+
+
+  /**
+   * @brief Common-case helper set mesh vertex positons.
+   *        Creates vertex element, if necessary.
+   *
+   * @param vertexPositions A vector of vertex positions
+   */
+  void addNormals(const std::vector<float>& normals) {
+
+    std::string vertexName = "vertex";
+    size_t npt = normals.size() / 3;
+
+    // Create the element
+    if (!hasElement(vertexName)) {
+      addElement(vertexName, npt);
+    }
+
+    // De-interleave
+    std::vector<float> nx(npt), ny(npt), nz(npt);
+    for (size_t i = 0; i < npt; i++) {
+      int ix3 = i * 3;
+      nx[i] = normals[ix3 + 0];
+      ny[i] = normals[ix3 + 1];
+      nz[i] = normals[ix3 + 2];
+    }
+
+    // Store
+    getElement(vertexName).addProperty<float>("nx", nx);
+    getElement(vertexName).addProperty<float>("ny", ny);
+    getElement(vertexName).addProperty<float>("nz", nz);
+  }
+
 
   /**
    * @brief Common-case helper set mesh vertex colors. Creates a vertex element, if necessary.
@@ -1642,6 +1783,35 @@ public:
 
     // Store
     getElement(faceName).addListProperty<IndType>("vertex_indices", intInds);
+  }
+
+  /**
+   * @brief Common-case helper to set face indices. Creates a face element if needed.
+   * The input type will be casted to a 32 bit integer of the same signedness.
+   *
+   * @param indices The indices into the vertex list around each face.
+   */
+  void addTriFaces(const std::vector<int>& faces) {
+
+    std::string faceName = "face";
+    size_t nf = faces.size() / 3;
+
+    // Create the element
+    if (!hasElement(faceName)) {
+      addElement(faceName, nf);
+    }
+
+    std::vector<std::vector<int>> intInds(nf);
+    for (int i = 0; i < nf; ++i) {
+      int ix3 = i * 3;
+      std::vector<int> thisInds(3);
+      for (int j = 0; j < 3; ++j) {
+        thisInds[j] = faces[ix3 + j];
+      }
+      intInds[i] = thisInds;
+    }
+    // Store
+    getElement(faceName).addListProperty<int>("vertex_indices", intInds);
   }
 
 
